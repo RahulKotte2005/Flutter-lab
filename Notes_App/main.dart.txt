@@ -1,0 +1,182 @@
+import 'package:flutter/material.dart';
+void main() => runApp(const NoteApp());
+
+class NoteApp extends StatelessWidget {
+  const NoteApp({super.key});
+  @override
+  Widget build(BuildContext context) => MaterialApp(
+        debugShowCheckedModeBanner: false,
+        title: 'NOTE',
+        theme: ThemeData(
+          scaffoldBackgroundColor: const Color(0xFFF8F8FB),
+          colorScheme: ColorScheme.fromSwatch(primarySwatch: Colors.deepPurple)
+              .copyWith(secondary: Colors.purpleAccent),
+        ),
+        home: const NoteHome(),
+      );
+}
+
+class NoteHome extends StatefulWidget {
+  const NoteHome({super.key});
+  @override
+  State<NoteHome> createState() => _NoteHomeState();
+}
+
+class _NoteHomeState extends State<NoteHome> {
+  final notes = <Map<String, String>>[];
+  String query = "";
+
+  void addOrEdit({Map<String, String>? note, int? i}) {
+    final title = TextEditingController(text: note?['title'] ?? '');
+    final desc = TextEditingController(text: note?['desc'] ?? '');
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        title: Text(note == null ? 'Add Note' : 'Edit Note'),
+        content: Column(mainAxisSize: MainAxisSize.min, children: [
+          TextField(controller: title, decoration: const InputDecoration(labelText: 'Title')),
+          const SizedBox(height: 8),
+          TextField(controller: desc, decoration: const InputDecoration(labelText: 'Description')),
+        ]),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.deepPurple),
+            child: const Text('Save'),
+            onPressed: () {
+              setState(() {
+                if (note == null)
+                  notes.add({'title': title.text, 'desc': desc.text});
+                else
+                  notes[i!] = {'title': title.text, 'desc': desc.text};
+              });
+              Navigator.pop(context);
+            },
+          )
+        ],
+      ),
+    );
+  }
+
+  void openNote(Map<String, String> n) => Navigator.push(
+      context, MaterialPageRoute(builder: (_) => NoteDetail(note: n)));
+
+  void searchDialog() => showDialog(
+        context: context,
+        builder: (_) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          title: const Text("Search Notes"),
+          content: TextField(
+            autofocus: true,
+            decoration: const InputDecoration(hintText: "Type title..."),
+            onChanged: (v) => setState(() => query = v),
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Close', style: TextStyle(color: Colors.deepPurple)))
+          ],
+        ),
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    final list = notes
+        .where((n) => n['title']!.toLowerCase().contains(query.toLowerCase()))
+        .toList();
+    return Scaffold(
+      appBar: AppBar(
+        elevation: 4,
+        flexibleSpace: const DecoratedBox(
+          decoration: BoxDecoration(
+              gradient: LinearGradient(
+                  colors: [Colors.deepPurple, Colors.purpleAccent],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight)),
+        ),
+        title: const Align(
+            alignment: Alignment.centerLeft,
+            child: Text('📝 NOTE', style: TextStyle(fontWeight: FontWeight.bold))),
+        actions: [
+          IconButton(icon: const Icon(Icons.home), onPressed: () => setState(() => query = "")),
+          IconButton(icon: const Icon(Icons.search), onPressed: searchDialog),
+        ],
+      ),
+      body: list.isEmpty
+          ? const Center(
+              child: Text('No notes yet.\nTap + to add one!',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.grey, fontSize: 18)),
+            )
+          : ListView.builder(
+              padding: const EdgeInsets.all(12),
+              itemCount: list.length,
+              itemBuilder: (_, i) => Card(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                child: ListTile(
+                  title: Text(list[i]['title']!, style: const TextStyle(fontWeight: FontWeight.bold)),
+                  subtitle: Text(
+                    list[i]['desc']!.isEmpty ? 'No description' : list[i]['desc']!,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: Colors.black54),
+                  ),
+                  onTap: () => openNote(list[i]),
+                  trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                    IconButton(
+                        icon: const Icon(Icons.edit, color: Colors.blueAccent),
+                        onPressed: () =>
+                            addOrEdit(note: list[i], i: notes.indexOf(list[i]))),
+                    IconButton(
+                        icon: const Icon(Icons.delete, color: Colors.redAccent),
+                        onPressed: () => setState(
+                            () => notes.removeAt(notes.indexOf(list[i])))),
+                  ]),
+                ),
+              ),
+            ),
+      floatingActionButton: FloatingActionButton(
+        backgroundColor: Colors.deepPurple,
+        child: const Icon(Icons.add),
+        onPressed: () => addOrEdit(),
+      ),
+    );
+  }
+}
+
+class NoteDetail extends StatelessWidget {
+  final Map<String, String> note;
+  const NoteDetail({super.key, required this.note});
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+        appBar: AppBar(
+          flexibleSpace: const DecoratedBox(
+            decoration: BoxDecoration(
+                gradient: LinearGradient(
+                    colors: [Colors.deepPurple, Colors.purpleAccent],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight)),
+          ),
+          title: Text(note['title'] ?? "Note"),
+          leading: IconButton(
+              icon: const Icon(Icons.arrow_back, color: Colors.white),
+              onPressed: () => Navigator.pop(context)),
+        ),
+        body: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Container(
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(14),
+                boxShadow: const [
+                  BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, 3))
+                ]),
+            child: Text(note['desc']!.isEmpty ? 'No description.' : note['desc']!,
+                style: const TextStyle(fontSize: 18, color: Colors.black87)),
+          ),
+        ),
+      );
+}
